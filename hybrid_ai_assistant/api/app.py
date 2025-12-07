@@ -13,18 +13,19 @@ def start():
     if not objective:
         return jsonify({"error": "Objective required"}), 400
         
-    initial_state = {
-        "objective": objective,
-        "logs": [],
-        "completed_steps": [],
-        "file_system_state": {}
-    }
-    
     # Start graph
     # config needs a thread_id for persistence
     import uuid
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
+    
+    initial_state = {
+        "objective": objective,
+        "logs": [],
+        "completed_steps": [],
+        "file_system_state": {},
+        "run_id": thread_id
+    }
     
     # Invoke until interrupt
     # invoke returns the final state of that step
