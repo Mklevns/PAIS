@@ -87,10 +87,10 @@ def main():
             for event in compiled_graph.stream(None, config=run_config):
                 for k, v in event.items():
                     print(f"Finished node: {k}")
-                    if "logs" in v:
-                        # Print new logs
-                         # Note: 'v' is the output of the node, which is a dict merged into state
+                    if "logs" in v and v["logs"]:
                          # We might want to see the new logs
+                         # Note: simplistic log print, might print duplicates if not careful
+                         # but sufficient for demo
                          pass
                          
     print("Workflow completed.")
