@@ -24,9 +24,8 @@ def build_graph():
         # if "ambiguous", state["clarification_status"] = False.
         
         if state.get("clarification_status") is False:
-            # In a real app, you might route to a "ask_user" node. 
-            # For now, let's say we just log it and proceed, or end.
-            return "research" 
+            # If ambiguous, we stop and ask user (or valid end state)
+            return END
         return "research"
 
     graph.add_conditional_edges(
