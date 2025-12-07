@@ -4,24 +4,37 @@ from hybrid_ai_assistant.config.config import config
 
 client = docker.from_env()
 
-def get_or_create_container():
-    # Check if running, else create with volume mount: host PROJECT_DIR -> /workspace
-    # Ensure project dir exists
-    if not os.path.exists(config.PROJECT_DIR):
+def get_or_create_container(existing_id=None, run_id=None):
+    # UPDATED: Check and reuse existing container if provided
+    if existing_id:
         try:
-            os.makedirs(config.PROJECT_DIR)
-        except Exception as e:
-            print(f"Warning: Could not create project dir {config.PROJECT_DIR}: {e}")
+            container = client.containers.get(existing_id)
+            if container.status != 'running':
+                container.start()
+            return container.id
+        except docker.errors.NotFound:
+            pass  # Create new one below
 
-    # Simple logic: create a new one every time or reuse if we had a persistent name. 
-    # For now, following user snippet, we just run one.
+    # Create new container
+    # Ensure project dir exists
+    # Use run_id to create an isolated workspace if provided, else root
+    if run_id:
+        workspace_host_path = os.path.join(config.PROJECT_DIR, run_id)
+    else:
+        workspace_host_path = config.PROJECT_DIR
+
+    if not os.path.exists(workspace_host_path):
+        try:
+            os.makedirs(workspace_host_path)
+        except Exception as e:
+            print(f"Warning: Could not create project dir {workspace_host_path}: {e}")
+
     try:
-        # In a real app we might name it or tag it to reuse
         container = client.containers.run(
             config.DOCKER_IMAGE, 
             detach=True, 
             tty=True, # Keep it alive
-            volumes={config.PROJECT_DIR: {'bind': '/workspace', 'mode': 'rw'}},
+            volumes={workspace_host_path: {'bind': '/workspace', 'mode': 'rw'}},
             working_dir='/workspace'
         )
         return container.id
