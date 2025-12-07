@@ -19,3 +19,4 @@ class ProjectState(TypedDict):
     completed_steps: Annotated[List[str], operator.add]
     file_system_state: dict  # Tree-like dict of dir structure
     logs: Annotated[List[str], operator.add]
+    container_id: Optional[str]  # ADDED: For per-session Docker isolation
