@@ -33,7 +33,8 @@ def main():
         "file_system_state": {},
         "research_memory": [],
         "plan_options": [],
-        "execution_steps": []
+        "execution_steps": [],
+        "run_id": thread_id # Initialize run_id for isolation
     }
     
     # Run graph - will likely pause at human_selection (interrupt before execution)
