@@ -10,7 +10,8 @@ def execute_plan(state: ProjectState) -> ProjectState:
     
     # UPDATED: Get or create container and store ID in state
     if not state.get("container_id"):
-        state["container_id"] = get_or_create_container()
+        # Pass run_id if available to ensure isolation
+        state["container_id"] = get_or_create_container(run_id=state.get("run_id"))
     
     container_id = state["container_id"]
     
@@ -22,22 +23,49 @@ def execute_plan(state: ProjectState) -> ProjectState:
             # Generate context
             # We would normally generate the file tree dynamically
             # For this 'simulated' file structure, we can skip or pass empty
-            context = ""
+            # context = generate_repo_map(state.get("file_system_state", {}))
+            context = "" # simplified for demo
             
-            code_prompt = f"Generate code for step: {step}. \nContext:\n{context}\nReturn ONLY the filename and content in a format I can parse, e.g. FILENAME: ... CONTENT: ..."
+            code_prompt = f"""
+            You are a coding assistant. 
+            Objective: {state['objective']}
+            Current Step: {step}
+            Tech Stack: {state['selected_plan'].tech_stack if state.get('selected_plan') else 'Python'}
             
-            # response = llm.invoke(code_prompt).content
+            Return a JSON object with two keys: "filename" and "content".
+            Example: {{"filename": "main.py", "content": "print('hello')"}}
+            Do not include markdown formatting or backticks.
+            """
             
-            # Using tool directly for demo
-            # UPDATED: Pass container_id to tools
-            write_file.invoke({"path": "output.txt", "content": f"Executed {step}", "container_id": container_id})
-            
-            result = exec_in_container(container_id, "python output.txt")
-            if "error" not in result:
-                break
+            try:
+                # 2. Invoke LLM
+                response = llm.invoke(code_prompt).content
+                
+                # Clean up response if it has backticks
+                response = response.replace("```json", "").replace("```", "").strip()
+
+                import json
+                data = json.loads(response)
+                
+                filename = data.get('filename')
+                content = data.get('content')
+                
+                if filename and content:
+                    # 3. Write File
+                    write_file.invoke({"path": filename, "content": content, "container_id": container_id})
+                    
+                    # 4. Execute (if python)
+                    result = "File written"
+                    if filename.endswith(".py"):
+                        result = exec_in_container(container_id, f"python {filename}")
+                    
+                    state["logs"].append(f"Executed {step}: {result}")
+                    if "error" not in result.lower():
+                        break
+            except Exception as e:
+                state["logs"].append(f"Error executing step {step}: {e}")
                 
         completed.append(step)
-        state["logs"].append(f"Executed: {step}")
 
     state["completed_steps"] = completed
     return state
